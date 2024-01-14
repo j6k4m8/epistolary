@@ -10,6 +10,9 @@ readme = "README.md"
 python = ">=3.11,<3.14"
 # https://github.com/Azeirah/remarks/tree/v6_with_rmscene:
 remarks = {git = "git@github.com:Azeirah/remarks.git", branch = "v6_with_rmscene"}
+pypdf = "^3.17.4"
+redbox = "^0.2.1"
+redmail = "^0.6.0"
 
 
 

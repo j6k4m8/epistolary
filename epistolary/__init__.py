@@ -1,142 +1,73 @@
-from typing import Protocol
-from rmapy.api import Client, Folder, Document as RmDocument
+from .document_manager import DocumentManager
+from .mailbox_manager import MailboxManager
+from .text_extractor import TextExtractor
+from .types import DocumentID, EmailID
 
 
-_DEFAULT_SUBDIRECTORY = "mail"
-
-
-class Message:
-    """A class to represent a mail message."""
-
-    def __init__(self, sender: str, recipient: str, subject: str, body: str):
-        """Create a new mail message."""
-        self.sender = sender
-        self.recipient = recipient
-        self.subject = subject
-        self.body = body
-
-
-class Document:
-    """A class to represent a document."""
-
-    def __init__(self, name: str, pages: list[str]):
-        """Create a new document."""
-        self.name = name
-        self.pages = pages
-
-
-class Mailbox(Protocol):
-    """A protocol for mailboxes."""
-
-    def get_new_mail(self) -> list[Message]:
-        """Get new mail messages."""
-        ...
-
-
-class Tablet(Protocol):
-    """A class to manage a tablet."""
-
-    def has_directory(self, directory: str) -> bool:
-        """Check if a directory exists."""
-        ...
-
-    def create_directory(self, directory: str):
-        """Create a directory."""
-        ...
-
-    def get_all_documents_in_directory(self, directory: str) -> list[Document]:
-        """Get all documents in a directory."""
-        ...
-
-    def delete_documents_in_directory(self, directory: str):
-        """Delete all documents in a directory."""
-        ...
-
-    def upload_documents(self, documents: list[Document], directory: str):
-        """Upload documents to a directory."""
-        ...
-
-
-class RmapyTablet(Tablet):
-    def __init__(self):
-        """Create a new tablet."""
-        self._client = Client()
-        self._client.renew_token()
-        assert self._client.is_auth(), "Failed to authenticate with reMarkable cloud"
-
-    def has_directory(self, directory: str) -> bool:
-        """Check if a directory exists."""
-        all_collection = self._client.get_meta_items()
-        folders = [item for item in all_collection if isinstance(item, Folder)]
-        root_folders = [folder for folder in folders if folder.Parent == ""]
-        return any(folder.VissibleName == directory for folder in root_folders)
-
-    def create_directory(self, directory: str):
-        """Create a directory."""
-        self._client.create_folder(directory)
-
-    def get_all_documents_in_directory(self, directory: str) -> list[Document]:
-        """Get all documents in a directory."""
-        # Get the folder:
-        all_collection = self._client.get_meta_items()
-        folders = [item for item in all_collection if isinstance(item, Folder)]
-        root_folders = [folder for folder in folders if folder.Parent == ""]
-        mail_folder = [
-            folder for folder in root_folders if folder.VissibleName == directory
-        ]
-
-    def delete_documents_in_directory(self, directory: str):
-        """Delete all documents in a directory."""
-        ...
-
-    def upload_documents(self, documents: list[Document], directory: str):
-        """Upload documents to a directory."""
-        ...
-
-
-class TabletSynchronizer:
-    """A class to manage synchronizing mail documents with the tablet."""
+class EpistolaryOrchestrator:
+    """A class that orchestrates the Epistolary system."""
 
     def __init__(
         self,
-        mailbox: Mailbox,
-        tablet: Tablet,
-        directory: str = _DEFAULT_SUBDIRECTORY,
+        mailbox_manager: MailboxManager,
+        document_manager: DocumentManager,
     ):
-        """Create a new synchronizer pointing to a specific mailbox and tablet."""
-        self._mailbox = mailbox
-        self._tablet = tablet
-        self._directory = directory
+        """Initialize the orchestrator.
 
-    def synchronize(self):
-        """Synchronize the mail documents with the tablet.
-
-        * OCR's any document with a reply.
-        * Deletes all old documents.
-        * Uploads fresh inbox.
+        Arguments:
+            mailbox_manager: The mailbox manager to use.
+            document_manager: The document manager to use.
 
         """
-        all_docs = self._tablet.get_all_documents_in_directory(self._subdirectory)
-        # Get the documents with a reply -- i.e., those where the last page is
-        # a handwritten page.
-        reply_docs = ...  # TODO
-        # Send replies:
-        for doc in reply_docs:
-            # Get the reply:
-            reply = ...
+        self.mailbox_manager = mailbox_manager
+        self.document_manager = document_manager
 
-        # Next we get a fresh copy of the inbox. If we fail to fetch the mail,
-        # we won't delete the old inbox.
-        # Get a fresh inbox:
-        new_mail = self._mailbox.get_new_mail()
-        # Delete all old documents.
-        self._tablet.delete_documents_in_directory(self._subdirectory)
+    def upload_email_by_id(self, email_id: EmailID) -> DocumentID:
+        """Upload an email to the document manager.
 
-        # Upload the new inbox:
-        new_docs = [self.mail_to_document(msg) for msg in new_mail]
-        self._tablet.upload_documents(new_docs, self._subdirectory)
+        Arguments:
+            email_id: The ID of the email to upload.
 
-    def mail_to_document(self, msg: Message) -> Document:
-        """Convert a mail message to a document."""
-        # TODO
-        pass
+        Returns:
+            The ID of the document.
+
+        """
+        # Get the subject and text of the email
+        subject, text = self.mailbox_manager.get_email_subject_and_text(email_id)
+        # Create a document from the subject and text and then append a page
+        # for the user to write on
+        document = self.document_manager.create_document_from_subject_and_text(
+            subject, text
+        )
+        document = self.document_manager.append_ruled_page_to_document(document)
+        # Put the document into the document manager:
+        document_id = self.document_manager.put_document(document, email_id)
+        return document_id
+
+    def refresh_document_mailbox(self):
+        """Refresh the document mailbox."""
+        # TODO: Only delete documents that are no longer in the mailbox.
+        # (Prevent delete and immediately re-upload)
+
+        # Delete all old documents:
+        for document_id in self.document_manager.list_documents():
+            self.document_manager.delete_document(document_id)
+
+        # Upload all current emails:
+        for eid, _ in self.mailbox_manager.get_emails():
+            # Check if the email has already been added to the document mailbox
+            # (the document ID should be the same as the email ID)
+            if self.document_manager.has_document(DocumentID(eid)):
+                continue
+
+            # If the email has not been added, add it:
+            self.upload_email_by_id(eid)
+
+    def send_document_by_id(self, document_id: DocumentID, to: str) -> bool:
+        """Send a document to an email address."""
+        # Get the document:
+        document = self.document_manager.get_document(document_id)
+        # Create an email from the document:
+        subject, text = self.document_manager.create_email_from_document(document)
+        # Send the email:
+        return self.mailbox_manager.send_message(to, subject, text)

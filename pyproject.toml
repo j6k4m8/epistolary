@@ -1,0 +1,18 @@
+[tool.poetry]
+name = "epistolary"
+version = "0.1.0"
+description = "Respond to emails with your reMarkable tablet"
+authors = ["Jordan Matelsky <j6k4m8@gmail.com>"]
+license = "Apache 2.0"
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = ">=3.11,<3.14"
+# https://github.com/Azeirah/remarks/tree/v6_with_rmscene:
+remarks = {git = "git@github.com:Azeirah/remarks.git", branch = "v6_with_rmscene"}
+
+
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"

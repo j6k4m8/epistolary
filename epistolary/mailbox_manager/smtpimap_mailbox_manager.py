@@ -43,6 +43,7 @@ class SMTPIMAPMailboxManager(MailboxManager):
         smtp_port: int = 465,
         smtp_username: str | None = None,
         smtp_password: str | None = None,
+        ignore_marketing_emails: bool = True,
     ):
         """Create a new SMTPIMAPMailboxManager object.
 
@@ -51,6 +52,9 @@ class SMTPIMAPMailboxManager(MailboxManager):
             port (int): The port number of the mail server.
             username (str): The username for authentication.
             password (str): The password for authentication.
+            ignore_marketing_emails (bool, optional): Whether to ignore
+                marketing emails. Defaults to True. (Anything with the word
+                "unsubscribe" in it is ignored.)
 
         """
         if smtp_username is None:
@@ -59,13 +63,18 @@ class SMTPIMAPMailboxManager(MailboxManager):
             smtp_password = password
         self._box = EmailBox(imap_host, imap_port, username, password)
         self._sender = EmailSender(smtp_host, smtp_port, smtp_username, smtp_password)
+        self._ignore_marketing_emails = ignore_marketing_emails
 
-    def get_emails(self, folder: str | None = None) -> dict[EmailID, EmailMessage]:
+    def get_emails(
+        self, folder: str | None = None, limit: int | None = None
+    ) -> dict[EmailID, EmailMessage]:
         """
         Get the emails from the specified folder.
 
         Arguments:
             folder (str | None, optional): The folder name. Defaults to "INBOX".
+            limit (int | None, optional): The maximum number of emails to return.
+                Defaults to None, which returns all emails.
 
         Returns:
             dict[EmailID, EmailMessage]: A dictionary containing the emails,
@@ -74,10 +83,17 @@ class SMTPIMAPMailboxManager(MailboxManager):
         if folder is None:
             folder = "INBOX"
         messages = self._box[folder].search(unseen=True)
-        return {
-            EmailID(_get_msgid_from_header_dict(message.headers)): message
-            for message in messages
-        }
+        result = {}
+        for message in messages:
+            # if (
+            #     self._ignore_marketing_emails
+            #     and "unsubscribe" in message.html_body.lower()
+            # ):
+            #     continue
+            result[EmailID(_get_msgid_from_header_dict(message.headers))] = message
+            if limit is not None and len(result) >= limit:
+                break
+        return result
 
     def get_email(self, email_id: EmailID) -> EmailMessage:
         """

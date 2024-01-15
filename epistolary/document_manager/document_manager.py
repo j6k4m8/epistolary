@@ -1,5 +1,6 @@
 from typing import Protocol
-from ..types import Document, DocumentID
+from fitz import Document
+from ..types import DocumentID
 
 
 class DocumentManager(Protocol):
@@ -44,21 +45,6 @@ class DocumentManager(Protocol):
 
         Returns:
             True if the document exists, False otherwise.
-
-        """
-        ...
-
-    def create_document_from_subject_and_text(
-        self, subject: str, text: str
-    ) -> Document:
-        """Create a document from a subject and text.
-
-        Arguments:
-            subject: The subject of the document.
-            text: The text of the document.
-
-        Returns:
-            The created document.
 
         """
         ...

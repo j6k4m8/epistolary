@@ -6,12 +6,15 @@ from ..types import EmailID
 class MailboxManager(Protocol):
     """A protocol for classes that manage mailboxes."""
 
-    def get_emails(self, folder: str | None = None) -> dict[EmailID, EmailMessage]:
+    def get_emails(
+        self, folder: str | None = None, limit: int | None = None
+    ) -> dict[EmailID, EmailMessage]:
         """Return a list of emails in the specified folder.
 
         Arguments:
             folder: The folder to get emails from. If None, get emails from
                 all folders.
+            limit: The maximum number of emails to return. If None, return all
 
         Returns:
             A dictionary of emails, with the email ID as the key and the email

@@ -63,18 +63,6 @@ class DocumentManager(Protocol):
         """
         ...
 
-    def create_email_from_document(self, document: Document) -> tuple[str, str]:
-        """Create an email subject and text from a document.
-
-        Arguments:
-            document: The document to create the email from.
-
-        Returns:
-            The email subject and text.
-
-        """
-        ...
-
     def append_ruled_page_to_document(self, document: Document) -> Document:
         """Append a ruled page to a document.
 

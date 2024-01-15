@@ -61,12 +61,6 @@ class FilesystemDocumentManager(DocumentManager):
         """
         return (self.root_path / f"{document_id}.pdf").exists()
 
-    def create_document_from_subject_and_text(
-        self, subject: str, text: str
-    ) -> fitz.Document:
-        # TODO: Implement this
-        raise NotImplementedError()
-
     def append_ruled_page_to_document(self, document: fitz.Document) -> fitz.Document:
         """Append a ruled page to a document.
 

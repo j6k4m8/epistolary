@@ -1,6 +1,6 @@
 from typing import Protocol
 from redbox.models import EmailMessage
-from .types import EmailID
+from ..types import EmailID
 
 
 class MailboxManager(Protocol):

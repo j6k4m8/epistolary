@@ -16,3 +16,13 @@ The tool comprises three main components:
 -   `MailboxManager`: A class that manages the mailbox, and provides methods to get the next email to be printed, and to send a reply to an email.
 -   `DocumentManager`: A class that manages the PDF document library.
 -   `EpistolaryOrchestrator`: A class that manages the interaction between the `MailboxManager` and the `DocumentManager`, and provides OCR and main entry point functionality.
+
+## Installation
+
+You must first install Tesseract for OCR. On MacOS, this can be done with `brew install tesseract`.
+
+Then install Python dependencies:
+
+```bash
+poetry install
+```

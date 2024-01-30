@@ -1,6 +1,6 @@
 from redbox import EmailBox
 from redbox.models import EmailMessage
-from redmail import EmailSender
+from redmail import EmailSender  # type: ignore
 
 from ..types import EmailID
 from .mailbox_manager import MailboxManager

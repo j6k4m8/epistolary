@@ -20,6 +20,6 @@ class TesseractTextExtractor(TextExtractor):
         """
         # Convert the PDF page to be readable as an image, using the
         # fitz library.
-        pix = page.get_pixmap()
+        pix = page.get_pixmap()  # type: ignore
         img = Image.frombytes("RGB", (pix.width, pix.height), pix.samples)
         return pytesseract.image_to_string(img)

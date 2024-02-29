@@ -1,0 +1,2 @@
+EmailID = str
+DocumentID = str

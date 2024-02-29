@@ -9,7 +9,11 @@ readme = "README.md"
 [tool.poetry.dependencies]
 python = ">=3.11,<3.14"
 # https://github.com/Azeirah/remarks/tree/v6_with_rmscene:
-remarks = {git = "git@github.com:Azeirah/remarks.git", branch = "v6_with_rmscene"}
+redbox = "^0.2.1"
+redmail = "^0.6.0"
+pytesseract = "^0.3.10"
+pymupdf = "^1.23.12"
+pillow = "^10.2.0"
 
 
 

@@ -71,7 +71,7 @@ class FilesystemDocumentManager(DocumentManager):
             A NEW document with the page appended.
 
         """
-        # For now, just append a blank page
+        # TODO: For now, just append a blank page
         page = document.new_page(-1)  # type: ignore
         return document
 

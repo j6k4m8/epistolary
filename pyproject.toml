@@ -12,10 +12,14 @@ python = ">=3.11,<3.14"
 redbox = "^0.2.1"
 redmail = "^0.6.0"
 pytesseract = "^0.3.10"
-pymupdf = "^1.23.12"
+# pymupdf = "^1.23.12"
 pillow = "^10.2.0"
+remarks = { git = "https://github.com/azeirah/remarks", branch = "v6_with_rmscene" }
 
 
+
+[tool.poetry.group.dev.dependencies]
+ipykernel = "^6.29.3"
 
 [build-system]
 requires = ["poetry-core"]

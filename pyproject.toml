@@ -1,26 +1,28 @@
-[tool.poetry]
+[project]
 name = "epistolary"
 version = "0.1.0"
-description = "Respond to emails with your reMarkable tablet"
-authors = ["Jordan Matelsky <j6k4m8@gmail.com>"]
-license = "Apache 2.0"
+description = "Add your description here"
 readme = "README.md"
-
-[tool.poetry.dependencies]
-python = ">=3.11,<3.14"
-# https://github.com/Azeirah/remarks/tree/v6_with_rmscene:
-redbox = "^0.2.1"
-redmail = "^0.6.0"
-pytesseract = "^0.3.10"
-# pymupdf = "^1.23.12"
-pillow = "^10.2.0"
-remarks = { git = "https://github.com/azeirah/remarks", branch = "v6_with_rmscene" }
-
-
-
-[tool.poetry.group.dev.dependencies]
-ipykernel = "^6.29.3"
+requires-python = ">=3.11"
+dependencies = [
+    "redbox>=0.2.1",
+    "redmail>=0.6.0",
+    "pytesseract>=0.3.13",
+    "pillow>=10.4.0",
+    "remarks",
+    "boto3>=1.35.8",
+    "openai>=1.43.0",
+]
 
 [build-system]
-requires = ["poetry-core"]
-build-backend = "poetry.core.masonry.api"
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.uv]
+dev-dependencies = [
+    "ipykernel>=6.29.5",
+    "ruff>=0.6.3",
+]
+
+[tool.uv.sources]
+remarks = { git = "https://github.com/azeirah/remarks", branch = "v6_with_rmscene" }

@@ -19,10 +19,16 @@ The tool comprises three main components:
 
 ## Installation
 
-You must first install Tesseract for OCR. On MacOS, this can be done with `brew install tesseract`.
+### 0. Requirements
+
+If you are using the tesseract OCR option, you must first install Tesseract for OCR. On MacOS, this can be done with `brew install tesseract`.
+
+If you are using the OpenAI OCR option, you should configure your OpenAI API key globally, or you can pass it in a config to the TextExtractor directly.
+
+### 1. Install the package
 
 Then install Python dependencies:
 
 ```bash
-poetry install
+uv install
 ```

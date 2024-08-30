@@ -209,7 +209,7 @@ dev = [
 [package.metadata]
 requires-dist = [
     { name = "boto3", specifier = ">=1.35.8" },
-    { name = "openai" },
+    { name = "openai", specifier = ">=1.43.0" },
     { name = "pillow", specifier = ">=10.4.0" },
     { name = "pytesseract", specifier = ">=0.3.13" },
     { name = "redbox", specifier = ">=0.2.1" },

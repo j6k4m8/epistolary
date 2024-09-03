@@ -57,6 +57,7 @@ class RemarkableDocumentManager(DocumentManager):
         self._remarkable_root_path = remarkable_root_path
         self._provision_remarkable_directory()
         self._remarks = RemarksWrapper(debug=debug)
+        self._debug = debug
 
     def _provision_local_cache(self):
         """Provision the local cache directory."""
@@ -126,5 +127,37 @@ class RemarkableDocumentManager(DocumentManager):
         zip_path = abs_path.with_suffix(".zip")
         pdf_path = abs_path.with_suffix(".pdf")
         self._remarks.rm_to_pdf(zip_path, pdf_path)
-        print(zip_path, pdf_path)
+        if self._debug:
+            print(zip_path, pdf_path)
         return fitz.open(pdf_path)
+
+    def has_document(self, uid: DocumentID) -> bool:
+        """Check if a document exists.
+
+        Arguments:
+            uid: The ID of the document to check for.
+
+        Returns:
+            True if the document exists, False otherwise.
+
+        """
+        return (uid + ".pdf") in self.list_documents()
+
+    def put_document(self, document: fitz.Document, uid: DocumentID):
+        """Upload a document to the reMarkable.
+
+        Arguments:
+            document: The document to upload.
+            uid: The ID of the document.
+
+        """
+        pdf_path = (self._local_cache_root_path / uid).with_suffix(".pdf")
+        document.save(pdf_path)
+        self._rmapi.upload(pdf_path, self._remarkable_root_path)
+
+    def delete_document(self, uid: DocumentID) -> bool:
+        return False
+
+    def append_ruled_page_to_document(self, document: fitz.Document) -> fitz.Document:
+        page = document.new_page(-1)  # type: ignore
+        return document

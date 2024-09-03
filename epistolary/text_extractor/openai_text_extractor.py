@@ -6,12 +6,18 @@ from .text_extractor import TextExtractor
 
 
 class OpenAITextExtractor(TextExtractor):
-    def __init__(self, client: OpenAI | None = None, api_key: str | None = None):
+    def __init__(
+        self,
+        client: OpenAI | None = None,
+        api_key: str | None = None,
+        page_shrink_factor: int = 2,
+    ):
         self._client = client or (OpenAI(api_key=api_key) if api_key else OpenAI())
+        self._shrink_factor = page_shrink_factor
 
     def extract_text_from_page(self, page: Page) -> str:
         png = page.get_pixmap()
-        png.shrink(4)
+        png.shrink(self._shrink_factor)
         png_bytes = png.tobytes("png")
         png_b64 = base64.b64encode(png_bytes).decode("utf-8")
 

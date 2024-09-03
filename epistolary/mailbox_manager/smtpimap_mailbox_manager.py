@@ -1,3 +1,4 @@
+import pathlib
 from redbox import EmailBox
 from redbox.models import EmailMessage
 from redmail import EmailSender  # type: ignore
@@ -64,6 +65,38 @@ class SMTPIMAPMailboxManager(MailboxManager):
         self._box = EmailBox(imap_host, imap_port, username, password)
         self._sender = EmailSender(smtp_host, smtp_port, smtp_username, smtp_password)
         self._ignore_marketing_emails = ignore_marketing_emails
+
+    @classmethod
+    def from_file(
+        cls, path: str | pathlib.Path = "~/.config/epistolary.json"
+    ) -> "SMTPIMAPMailboxManager":
+        """Create a new SMTPIMAPMailboxManager from a file.
+
+        Arguments:
+            path (str | pathlib.Path, optional): The path to the file.
+                Defaults to "~/.config/epistolary.json".
+
+        Returns:
+            SMTPIMAPMailboxManager: The mailbox manager.
+
+        """
+        import json
+
+        path = pathlib.Path(path).expanduser().resolve()
+
+        with open(path) as f:
+            config = json.load(f)
+        return cls(
+            imap_host=config["imap"]["host"],
+            imap_port=config["imap"]["port"],
+            username=config["email"],
+            password=config["password"],
+            smtp_host=config["smtp"]["host"],
+            smtp_port=config["smtp"]["port"],
+            smtp_username=config.get("smtp_username"),
+            smtp_password=config.get("smtp_password"),
+            ignore_marketing_emails=config.get("ignore_marketing_emails", True),
+        )
 
     def get_emails(
         self, folder: str | None = None, limit: int | None = None

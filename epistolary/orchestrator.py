@@ -79,7 +79,10 @@ class EpistolaryOrchestrator:
 
         # text_body is b64 encoded, so we need to decode it:
 
-        text_body = base64.b64decode(text_body).decode("utf-8")
+        try:
+            text_body = base64.b64decode(text_body).decode("utf-8")
+        except:
+            text_body = text_body
         text_body_as_html = text_body.strip().replace("\n", "<br />")
 
         # html_body is the HTML content of the email, but it may also be in

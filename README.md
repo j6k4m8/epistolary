@@ -25,6 +25,8 @@ If you are using the tesseract OCR option, you must first install Tesseract for 
 
 If you are using the OpenAI OCR option, you should configure your OpenAI API key globally, or you can pass it in a config to the TextExtractor directly.
 
+If you are planning to use the reMarkable document management tools, you will also need to install [the `rmapi` tool](https://github.com/juruen/rmapi) and configure it with your reMarkable account.
+
 ### 1. Install the package
 
 Then install Python dependencies:

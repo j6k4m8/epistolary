@@ -4,6 +4,10 @@ I find writing emails to be one of the most tedious and unpleasant tasks of my d
 
 ---
 
+See [docs/Overview.md](docs/Overview.md) for an example!
+
+---
+
 This tool is designed to "print" emails to a PDF file (one thread per file), with a blank (ruled) page after each email.
 You can write a reply to the email on the blank page, and Epistolary will convert your handwriting to text and send it as a reply to the email.
 

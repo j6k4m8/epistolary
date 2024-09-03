@@ -37,6 +37,7 @@ class RemarkableDocumentManager(DocumentManager):
         self,
         local_cache_root_path: pathlib.Path | None = None,
         remarkable_root_path: str = "Emails",
+        remarkable_outbox_subdirectory: str = "Outbox",
         debug: bool = False,
     ):
         """
@@ -48,6 +49,8 @@ class RemarkableDocumentManager(DocumentManager):
                 temp directory is created and used.
             remarkable_root_path: The path to the root directory on the tablet
                 where the documents are stored. Defaults to "Emails".
+            remarkable_outbox_subdirectory: The subdirectory of the root
+                directory where the outbox is stored. Defaults to "Outbox".
             debug: Whether to print debug information. Defaults to False.
         """
         self._local_cache_root_path = local_cache_root_path  # type: ignore
@@ -55,6 +58,7 @@ class RemarkableDocumentManager(DocumentManager):
 
         self._rmapi = RMAPIWrapper(cache_dir=self._local_cache_root_path)
         self._remarkable_root_path = remarkable_root_path
+        self._remarkable_outbox_subdirectory = remarkable_outbox_subdirectory
         self._provision_remarkable_directory()
         self._remarks = RemarksWrapper(debug=debug)
         self._debug = debug
@@ -69,6 +73,9 @@ class RemarkableDocumentManager(DocumentManager):
         """Provision the reMarkable directory."""
         # Check if the directory exists
         self._rmapi.mkdir(self._remarkable_root_path)
+        self._rmapi.mkdir(
+            self._remarkable_root_path + "/" + self._remarkable_outbox_subdirectory
+        )
 
     def get_documents(self) -> dict[DocumentID, fitz.Document]:
         """Return a list of documents.
@@ -95,6 +102,26 @@ class RemarkableDocumentManager(DocumentManager):
         for document_id in document_ids:
             documents[document_id] = self.get_document(document_id)
         return documents
+
+    def get_edited_documents(self) -> dict[DocumentID, fitz.Document]:
+        """Return a list of edited documents.
+
+        Returns:
+            A dictionary of documents, with the document ID as the key and the
+            document as the value.
+
+        """
+        # Get all docs from the outbox
+        files = self._rmapi.ls(
+            self._remarkable_root_path + "/" + self._remarkable_outbox_subdirectory
+        )
+        return {
+            document_id: self.get_document(
+                f"{self._remarkable_outbox_subdirectory}/{document_id}"
+            )
+            for document_type, document_id in files
+            if document_type == ReMarkablePathType.FILE
+        }
 
     def list_documents(self) -> list[DocumentID]:
         """Return a list of document IDs.
@@ -124,12 +151,12 @@ class RemarkableDocumentManager(DocumentManager):
         """
         abs_path = self._local_cache_root_path / uid
         self._rmapi.download(self._remarkable_root_path + "/" + uid, abs_path)
-        zip_path = abs_path.with_suffix(".zip")
-        pdf_path = abs_path.with_suffix(".pdf")
+        zip_path = pathlib.Path(str(abs_path) + ".zip")
+        pdf_path = pathlib.Path(str(abs_path) + ".pdf")
         self._remarks.rm_to_pdf(zip_path, pdf_path)
         if self._debug:
             print(zip_path, pdf_path)
-        return fitz.open(pdf_path)
+        return fitz.open(pdf_path)  # type: ignore
 
     def has_document(self, uid: DocumentID) -> bool:
         """Check if a document exists.
@@ -151,7 +178,7 @@ class RemarkableDocumentManager(DocumentManager):
             uid: The ID of the document.
 
         """
-        pdf_path = (self._local_cache_root_path / uid).with_suffix(".pdf")
+        pdf_path = pathlib.Path(str(self._local_cache_root_path / uid) + ".pdf")
         document.save(pdf_path)
         self._rmapi.upload(pdf_path, self._remarkable_root_path)
 
@@ -159,5 +186,5 @@ class RemarkableDocumentManager(DocumentManager):
         return False
 
     def append_ruled_page_to_document(self, document: fitz.Document) -> fitz.Document:
-        page = document.new_page(-1)  # type: ignore
+        _page = document.new_page(-1)  # type: ignore
         return document

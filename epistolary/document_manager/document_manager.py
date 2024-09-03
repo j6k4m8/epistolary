@@ -16,6 +16,16 @@ class DocumentManager(Protocol):
         """
         ...
 
+    def get_edited_documents(self) -> dict[DocumentID, Document]:
+        """Return a list of edited documents.
+
+        Returns:
+            A dictionary of documents, with the document ID as the key and the
+            document as the value.
+
+        """
+        ...
+
     def list_documents(self) -> list[DocumentID]:
         """Return a list of document IDs.
 

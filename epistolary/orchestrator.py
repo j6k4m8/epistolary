@@ -1,6 +1,7 @@
 from epistolary.document_manager import DocumentManager
 from epistolary.mailbox_manager import MailboxManager
 from epistolary.text_extractor import TextExtractor
+
 import fitz
 import io
 from fitz import Document
@@ -15,6 +16,7 @@ class EpistolaryOrchestrator:
         self,
         mailbox_manager: MailboxManager,
         document_manager: DocumentManager,
+        text_extractor: TextExtractor,
         debug: bool = False,
     ):
         """Initialize the orchestrator.
@@ -27,6 +29,7 @@ class EpistolaryOrchestrator:
         """
         self.mailbox_manager = mailbox_manager
         self.document_manager = document_manager
+        self.text_extractor = text_extractor
         self._debug = debug
 
     def refresh_document_mailbox(self):
@@ -81,7 +84,7 @@ class EpistolaryOrchestrator:
 
         try:
             text_body = base64.b64decode(text_body).decode("utf-8")
-        except:
+        except Exception as _e:
             text_body = text_body
         text_body_as_html = text_body.strip().replace("\n", "<br />")
 
@@ -134,6 +137,40 @@ class EpistolaryOrchestrator:
         document_id = self.document_manager.put_document(document, email_id)
         return document_id
 
-    def get_edited_documents(self) -> list[DocumentID]:
+    def get_edited_documents(self) -> dict[DocumentID, Document]:
         """Get all documents that have been edited."""
-        docs = self.document_manager.get_documents()
+        docs = self.document_manager.get_edited_documents()
+        return docs
+
+    def get_last_page_ocr_text_for_document(self, doc: DocumentID | Document) -> str:
+        """Get the OCR text for the last page of a document.
+
+        Arguments:
+            doc: The document to get the OCR text for. This can be either a
+                document ID or a document object. If it is a document ID, the
+                document will be retrieved from the document manager.
+
+        Returns:
+            The OCR text for the last page of the document.
+
+        """
+        if isinstance(doc, DocumentID):
+            doc = self.document_manager.get_document(doc)
+        last_page = doc[-1]
+        return self.text_extractor.extract_text_from_page(last_page)
+
+    def send_outbox(self) -> list[EmailID]:
+        """Send all documents in the outbox."""
+        outbox = self.document_manager.get_edited_documents()
+        sent_emails = []
+        for did, doc in outbox.items():
+            outgoing_text = self.get_last_page_ocr_text_for_document(doc)
+            relevant_received_email = self.mailbox_manager.get_email(did)
+            result = self.mailbox_manager.send_message(
+                to=relevant_received_email.from_,
+                subject="Re: " + relevant_received_email.subject,
+                body=outgoing_text,
+                in_reply_to=did,
+            )
+            sent_emails.append(result)
+        return sent_emails

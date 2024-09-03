@@ -79,6 +79,8 @@ class RMAPIWrapper:
         local_path = pathlib.Path(
             str(local_path).replace(".pdf", "").replace(".zip", "")
         )
+        # Create the local path if it doesn't exist
+        local_path.parent.mkdir(parents=True, exist_ok=True)
         self._run_rmapi("get", remote_path)
         base_fname = pathlib.Path(remote_path).name
         pathlib.Path(str(self._cache_dir / base_fname) + ".zip").rename(
@@ -156,6 +158,8 @@ class RemarksWrapper:
         """
         input_path = pathlib.Path(input_path)
         output_path = pathlib.Path(output_path)
+        # Create outputpath.parent if it doesn't exist
+        output_path.parent.mkdir(parents=True, exist_ok=True)
         output_path_without_extension = output_path.with_suffix("")
         # If input path is a .zip, extract it
         if not input_path.suffix == ".zip":

@@ -158,7 +158,7 @@ class SMTPIMAPMailboxManager(MailboxManager):
         self, to: str, subject: str, body: str, in_reply_to: EmailID | None = None
     ) -> bool:
         """Send a message."""
-        to = "epistolary-testing@matelsky.com"
+        # to = "epistolary-testing@matelsky.com"
         # sender = self._sender.username
         # sender = "jordan@matelsky.com"
         self._sender.send(

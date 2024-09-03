@@ -24,7 +24,7 @@ class FilesystemDocumentManager(DocumentManager):
 
         """
         return {
-            DocumentID(path.stem): fitz.open(path)
+            DocumentID(path.stem): fitz.open(path)  # type: ignore
             for path in self.root_path.glob("*.pdf")
         }
 
@@ -47,7 +47,7 @@ class FilesystemDocumentManager(DocumentManager):
             The document with the given ID.
 
         """
-        return fitz.open(self.root_path / f"{document_id}.pdf")
+        return fitz.open(self.root_path / f"{document_id}.pdf")  # type: ignore
 
     def has_document(self, document_id: DocumentID) -> bool:
         """Return whether a document exists.
@@ -72,7 +72,7 @@ class FilesystemDocumentManager(DocumentManager):
 
         """
         # TODO: For now, just append a blank page
-        page = document.new_page(-1)  # type: ignore
+        _page = document.new_page(-1)  # type: ignore
         return document
 
     def put_document(

@@ -105,6 +105,12 @@ class RMAPIWrapper:
         """
         self._run_rmapi("mkdir", remote_path)
 
+    def move(self, input_remote_path: str, output_remote_path: str):
+        """
+        Rename a reMarkable file.
+        """
+        self._run_rmapi("mv", input_remote_path, output_remote_path)
+
 
 class RemarksWrapper:
     """

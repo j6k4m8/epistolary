@@ -34,3 +34,57 @@ Then install Python dependencies:
 ```bash
 uv install
 ```
+
+### 2. Configure the package
+
+Create a `~/.config/epistolary.json` file. (This is optional but recommended so that you don't have to put your password in the Python kernel directly.)
+
+```json
+{
+    "email": "####",
+    "password": "####",
+    "imap": {
+        "host": "####",
+        "port": 993
+    },
+    "smtp": {
+        "host": "####",
+        "port": 587
+    }
+}
+```
+
+### 3. Run the package
+
+Here's an example of a Python script that uses the package:
+
+```python
+from epistolary.orchestrator import EpistolaryOrchestrator
+from epistolary.mailbox_manager import SMTPIMAPMailboxManager
+from epistolary.document_manager.remarkable_document_manager import RemarkableDocumentManager
+from epistolary.text_extractor.openai_text_extractor import OpenAITextExtractor
+
+EO = EpistolaryOrchestrator(
+    SMTPIMAPMailboxManager.from_file(),
+    RemarkableDocumentManager(),
+    text_extractor=OpenAITextExtractor(),
+    debug=True,
+)
+
+EO.refresh_document_mailbox()
+```
+
+And to send:
+
+```python
+EO.send_outbox()
+```
+
+Note that the `SMTPIMAPMailboxManager` uses the `epistolary.json` file to get the email and password, and the `RemarkableDocumentManager` uses the `rmapi` tool to manage the reMarkable documents (which depends upon a `~/.rmapi` file with your reMarkable credentials).
+
+If you do not choose to use the `#from_file()` method, you can pass in the email, password, and other parameters directly to the `SMTPIMAPMailboxManager` constructor.
+
+## Known Limitations
+
+-   No support for inline images or attachments yet... But it should be easy to add!
+-   Spacing and formatting of the OCR'd text is not perfect, but it's usually good enough for a quick reply.

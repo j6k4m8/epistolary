@@ -183,7 +183,23 @@ class RemarkableDocumentManager(DocumentManager):
         self._rmapi.upload(pdf_path, self._remarkable_root_path)
 
     def delete_document(self, uid: DocumentID) -> bool:
-        return False
+        # Create a `_Archive` directory if it doesn't exist, inside the root:
+        self._rmapi.mkdir(self._remarkable_root_path + "/_Archive")
+        # Move the document to the `_Archive` directory:
+        try:
+            self._rmapi.move(
+                f"{self._remarkable_root_path}/{uid}",
+                f"{self._remarkable_root_path}/_Archive",
+            )
+        except Exception as _e:
+            try:
+                self._rmapi.move(
+                    f"{self._remarkable_root_path}/{self._remarkable_outbox_subdirectory}/{uid}",
+                    f"{self._remarkable_root_path}/_Archive",
+                )
+            except Exception as _e:
+                return False
+        return True
 
     def append_ruled_page_to_document(self, document: fitz.Document) -> fitz.Document:
         _page = document.new_page(-1)  # type: ignore

@@ -173,4 +173,6 @@ class EpistolaryOrchestrator:
                 in_reply_to=did,
             )
             sent_emails.append(result)
+            if result:
+                self.document_manager.delete_document(did)
         return sent_emails

@@ -121,8 +121,8 @@ def init(ctx):
         smtp_username=smtp_username,
         smtp_password=smtp_password,
         ignore_marketing_emails=ignore_marketing_emails,
-        text_extractor=extractor,
-        document_manager=document_manager,
+        text_extractor=_TEXT_EXTRACTOR_OPTIONS[extractor],
+        document_manager=_DOCUMENT_MANAGER_OPTIONS[document_manager],
     )
 
     click.echo(

@@ -1,8 +1,9 @@
 import pathlib
 from redbox import EmailBox
 from redbox.models import EmailMessage
-from redmail import EmailSender  # type: ignore
+from redmail import EmailSender
 
+from ..epiconfig import EpistolaryConfig
 from ..types import EmailID
 from .mailbox_manager import MailboxManager
 
@@ -44,7 +45,6 @@ class SMTPIMAPMailboxManager(MailboxManager):
         smtp_port: int = 465,
         smtp_username: str | None = None,
         smtp_password: str | None = None,
-        ignore_marketing_emails: bool = True,
     ):
         """Create a new SMTPIMAPMailboxManager object.
 
@@ -53,9 +53,6 @@ class SMTPIMAPMailboxManager(MailboxManager):
             port (int): The port number of the mail server.
             username (str): The username for authentication.
             password (str): The password for authentication.
-            ignore_marketing_emails (bool, optional): Whether to ignore
-                marketing emails. Defaults to True. (Anything with the word
-                "unsubscribe" in it is ignored.)
 
         """
         if smtp_username is None:
@@ -64,7 +61,6 @@ class SMTPIMAPMailboxManager(MailboxManager):
             smtp_password = password
         self._box = EmailBox(imap_host, imap_port, username, password)
         self._sender = EmailSender(smtp_host, smtp_port, smtp_username, smtp_password)
-        self._ignore_marketing_emails = ignore_marketing_emails
 
     @classmethod
     def from_file(
@@ -80,22 +76,16 @@ class SMTPIMAPMailboxManager(MailboxManager):
             SMTPIMAPMailboxManager: The mailbox manager.
 
         """
-        import json
-
-        path = pathlib.Path(path).expanduser().resolve()
-
-        with open(path) as f:
-            config = json.load(f)
+        config = EpistolaryConfig.from_file(path)
         return cls(
-            imap_host=config["imap"]["host"],
-            imap_port=config["imap"]["port"],
-            username=config["email"],
-            password=config["password"],
-            smtp_host=config["smtp"]["host"],
-            smtp_port=config["smtp"]["port"],
-            smtp_username=config.get("smtp_username"),
-            smtp_password=config.get("smtp_password"),
-            ignore_marketing_emails=config.get("ignore_marketing_emails", True),
+            imap_host=config.imap_host,
+            imap_port=config.imap_port,
+            username=config.email,
+            password=config.password,
+            smtp_host=config.smtp_host,
+            smtp_port=config.smtp_port,
+            smtp_username=config.smtp_username,
+            smtp_password=config.smtp_password,
         )
 
     def get_emails(
@@ -118,11 +108,6 @@ class SMTPIMAPMailboxManager(MailboxManager):
         messages = self._box[folder].search(unseen=True)
         result = {}
         for message in messages:
-            # if (
-            #     self._ignore_marketing_emails
-            #     and "unsubscribe" in message.html_body.lower()
-            # ):
-            #     continue
             result[EmailID(_get_msgid_from_header_dict(message.headers))] = message
             if limit is not None and len(result) >= limit:
                 break
@@ -138,7 +123,8 @@ class SMTPIMAPMailboxManager(MailboxManager):
         Returns:
             EmailMessage: The email message.
         """
-        # TODO: Sad puppy
+        # TODO: Sad puppy. This means we're fetching ALL emails from the server
+        # every time we want to get a single email.
         return self.get_emails()[email_id]
 
     def get_email_subject_and_text(self, uid: EmailID) -> tuple[str, str]:

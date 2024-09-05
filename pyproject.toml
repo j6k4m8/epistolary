@@ -12,6 +12,7 @@ dependencies = [
     "remarks",
     "boto3>=1.35.8",
     "openai>=1.43.0",
+    "click>=8.1.7",
 ]
 
 [build-system]
@@ -26,3 +27,6 @@ dev-dependencies = [
 
 [tool.uv.sources]
 remarks = { git = "https://github.com/azeirah/remarks", branch = "v6_with_rmscene" }
+
+[project.scripts]
+epistolary = "epistolary.cli:cli"

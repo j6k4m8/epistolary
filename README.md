@@ -1,10 +1,13 @@
-# 💌 epistolary
+<h1 align=center><img width="315" alt="image" src="https://github.com/user-attachments/assets/a63afee8-a634-4a04-87d9-932f72b1dac9"></h1>
+
+<p align=center><img alt="PyPI - Version" src="https://img.shields.io/pypi/v/epistolary?style=for-the-badge">&nbsp; <img alt="Static Badge" src="https://img.shields.io/badge/%F0%9F%92%8C-Epistolary-beige?style=for-the-badge&label=Written%20by%20Hand">
+</p>
 
 I find writing emails to be one of the most tedious and unpleasant tasks of my day. But I find the act of handwriting to be one of the most pleasant! The reMarkable is an e-ink tablet with a very pleasant writing experience. This software allows you to respond to emails by writing on the reMarkable, and then sends an OCR'd version of your writing to the recipient.
 
 ---
 
-See [docs/Overview.md](docs/Overview.md) for an example!
+See [docs/Overview.md](docs/Overview.md) to see an example in action!
 
 ---
 

@@ -33,17 +33,37 @@ If you are planning to use the reMarkable document management tools, you will al
 
 ### 1. Install the package
 
-Then install Python dependencies:
+Optionally, install Python dependencies:
 
 ```bash
 uv install
 ```
 
+(If you do not do this explicitly, the package will install the dependencies automatically when you run the package.)
+
 ### 2. Configure the package
 
-Create a `~/.config/epistolary.json` file. (This is optional but recommended so that you don't have to put your password in the Python kernel directly.)
+This can be done in one of two ways: Manually, editing a config file; or by running the `init` wizard.
 
-```json
+We STRONGLY recommend using the `init` wizard, as it will guide you through the process of setting up the config file.
+
+#### Option 1: Run the `init` wizard
+
+```bash
+uv run epistolary init
+```
+
+This will guide you through the process of setting up the config file, passing in email credentials and the configurations for the document managers you'd like to use. You can also specify the location of a config file by passing the `--config`/`-c` flag:
+
+```bash
+uv run epistolary --config ~/.config/epistolary.json init
+```
+
+#### Option 2: Manually edit the config file
+
+Create a `~/.config/epistolary.json` file. Here's an example of what it might look like:
+
+```jsonc
 {
     "email": "####",
     "password": "####",
@@ -54,13 +74,34 @@ Create a `~/.config/epistolary.json` file. (This is optional but recommended so 
     "smtp": {
         "host": "####",
         "port": 587
-    }
+    },
+
+    // Optional (defaults shown)
+
+    "smtp_username": null,
+    "smtp_password": null,
+
+    "ignore_marketing_emails": true,
+    "document_manager": "epistolary.document_manager.remarkable_document_manager:RemarkableDocumentManager",
+    "text_extractor": "epistolary.text_extractor.openai_text_extractor:OpenAITextExtractor"
 }
 ```
 
-### 3. Run the package
+## Usage
 
-Here's an example of a Python script that uses the package:
+We recommend doing this with the `epistolary` cli:
+
+```bash
+# Get new emails and "print" them to your device:
+uv run epistolary receive
+```
+
+```bash
+# Send the replies you've written:
+uv run epistolary send
+```
+
+Alternatively, here's an example of a Python script that does the same thing as the above commands:
 
 ```python
 from epistolary.orchestrator import EpistolaryOrchestrator
@@ -75,6 +116,11 @@ EO = EpistolaryOrchestrator(
     debug=True,
 )
 
+```
+
+To receive emails:
+
+```python
 EO.refresh_document_mailbox()
 ```
 

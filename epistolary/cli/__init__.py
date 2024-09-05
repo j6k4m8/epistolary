@@ -65,8 +65,8 @@ def init(ctx):
     click.echo(
         "By default, Epistolary will ignore marketing emails, defined as any email that has the text 'unsubscribe' in the body."
     )
-    ignore_marketing_emails = click.confirm(
-        "Would you like to receive marketing emails?",
+    ignore_marketing_emails = not click.confirm(
+        "Would you like to forward marketing emails to your device (true) or ignore them (false, default)?",
         default=False,
     )
 

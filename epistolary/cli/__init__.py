@@ -12,6 +12,7 @@ from ..epiconfig import (
     _get_module_from_string,
 )
 from ..mailbox_manager.smtpimap_mailbox_manager import SMTPIMAPMailboxManager
+from ..orchestrator import EpistolaryOrchestrator
 
 
 @click.group()
@@ -151,6 +152,50 @@ def init(ctx):
     # Finally, we can write the config to the file.
     conf.to_file(config_path)
     click.echo(click.style(f"Config successfully written to {config_path}", fg="green"))
+
+
+@cli.command()
+@click.pass_context
+def receive(ctx):
+    config_path = ctx.obj["config_file_path"]
+    if not config_path.exists():
+        click.echo(
+            click.style(f"Config file does not exist at {config_path}", fg="red"),
+            err=True,
+        )
+        return
+
+    config = EpistolaryConfig.from_file(config_path)
+
+    EO = EpistolaryOrchestrator(
+        mailbox_manager=SMTPIMAPMailboxManager.from_file(config_path),
+        document_manager=_get_module_from_string(config.document_manager)(),
+        text_extractor=_get_module_from_string(config.text_extractor)(),
+    )
+
+    EO.refresh_document_mailbox()
+
+
+@cli.command()
+@click.pass_context
+def send(ctx):
+    config_path = ctx.obj["config_file_path"]
+    if not config_path.exists():
+        click.echo(
+            click.style(f"Config file does not exist at {config_path}", fg="red"),
+            err=True,
+        )
+        return
+
+    config = EpistolaryConfig.from_file(config_path)
+
+    EO = EpistolaryOrchestrator(
+        mailbox_manager=SMTPIMAPMailboxManager.from_file(config_path),
+        document_manager=_get_module_from_string(config.document_manager)(),
+        text_extractor=_get_module_from_string(config.text_extractor)(),
+    )
+
+    EO.send_outbox()
 
 
 if __name__ == "__main__":

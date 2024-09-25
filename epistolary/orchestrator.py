@@ -56,8 +56,8 @@ class EpistolaryOrchestrator:
                 continue
 
             if (
-                "unsubscribe" in msg.text_body.lower()
-                or "unsubscribe" in msg.html_body.lower()
+                "unsubscribe" in (msg.text_body or "").lower()
+                or "unsubscribe" in (msg.html_body or "").lower()
             ):
                 if self._debug:
                     print(f"Skipping email {eid}: Unsubscribe link.")
@@ -85,7 +85,7 @@ class EpistolaryOrchestrator:
         try:
             text_body = base64.b64decode(text_body).decode("utf-8")
         except Exception as _e:
-            text_body = text_body
+            text_body = text_body or html_body
         text_body_as_html = text_body.strip().replace("\n", "<br />")
 
         # html_body is the HTML content of the email, but it may also be in

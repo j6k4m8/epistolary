@@ -1,27 +1,24 @@
 import pathlib
 from redbox import EmailBox
 from redbox.models import EmailMessage
-from redmail import EmailSender
+from redmail.email.sender import EmailSender
 
 from ..epiconfig import EpistolaryConfig
 from ..types import EmailID
 from .mailbox_manager import MailboxManager
 
 
-def _get_msgid_from_header_dict(header_dict: dict[str, str]) -> EmailID:
-    _possible_message_id_keys = [
-        "Message-ID",
-        "Message-Id",
-        "Message-id",
-        "message-id",
-        "message_id",
-        "messageid",
-    ]
-    for possible_key in _possible_message_id_keys:
-        if possible_key in header_dict:
-            return EmailID(header_dict[possible_key])
+def sanitize_fname(fname: str) -> str:
+    from urllib.parse import quote
 
-    raise ValueError("No message ID found in header dict")
+    return quote(fname, safe="-_.@")
+
+
+def _get_mail_filename(header_dict: dict[str, str]) -> EmailID:
+    sender = sanitize_fname(header_dict.get("From", "unknown"))
+    subject = header_dict.get("Subject", "no subject")
+    combined = f"{sender}:::{subject}"
+    return EmailID(combined)
 
 
 class SMTPIMAPMailboxManager(MailboxManager):
@@ -108,7 +105,7 @@ class SMTPIMAPMailboxManager(MailboxManager):
         messages = self._box[folder].search(unseen=True)
         result = {}
         for message in messages:
-            result[EmailID(_get_msgid_from_header_dict(message.headers))] = message
+            result[_get_mail_filename(message.headers)] = message
             if limit is not None and len(result) >= limit:
                 break
         return result
@@ -144,6 +141,10 @@ class SMTPIMAPMailboxManager(MailboxManager):
         self, to: str, subject: str, body: str, in_reply_to: EmailID | None = None
     ) -> bool:
         """Send a message."""
+        print(f"Sending email to {to} with subject {subject} and body:\n{body}")
+        conf = input("Is this correct? (y/n) ")
+        if conf.lower() != "y":
+            return False
         self._sender.send(
             subject=subject,
             receivers=[to],

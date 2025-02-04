@@ -1,7 +1,6 @@
 import enum
 import pathlib
 import tempfile
-
 import subprocess
 
 
@@ -82,16 +81,41 @@ class RMAPIWrapper:
         # Create the local path if it doesn't exist
         local_path.parent.mkdir(parents=True, exist_ok=True)
         self._run_rmapi("get", remote_path)
+        # print("DEBUG: Listing files in cache directory:")
+        # for f in self._cache_dir.iterdir():
+        #     print("DEBUG: file in cache:", f)
         base_fname = pathlib.Path(remote_path).name
-        pathlib.Path(str(self._cache_dir / base_fname) + ".zip").rename(
-            str(local_path) + ".zip"
-        )
+        # print(f"DEBUG: Cache directory: {self._cache_dir}")
+        # print(f"DEBUG: Base file name: {base_fname}")
+        matching_zips = list(self._cache_dir.rglob(f"*{base_fname}*.zip"))
+        if not matching_zips:
+            matching_rmdocs = list(self._cache_dir.rglob(f"*{base_fname}*.rmdoc"))
+            if matching_rmdocs:
+                print(f"DEBUG: Found rmdoc file: {matching_rmdocs[0]}, renaming to zip")
+                matching_rmdocs[0].rename(pathlib.Path(str(local_path) + ".zip"))
+            else:
+                return
+                # all_zips = list(self._cache_dir.rglob("*.zip"))
+                # if len(all_zips) == 1:
+                #     print(
+                #         f"DEBUG: Fallback: using the only zip file found: {all_zips[0]}"
+                #     )
+                #     all_zips[0].rename(pathlib.Path(str(local_path) + ".zip"))
+                # else:
+                #     print(
+                #         f"ERROR: No matching zip or rmdoc file found in {self._cache_dir} for base name {base_fname}"
+                #     )
+                #     return
+        else:
+            zip_file = matching_zips[0]
+            print(f"DEBUG: Found zip file: {zip_file}")
+            zip_file.rename(pathlib.Path(str(local_path) + ".zip"))
 
-    def upload(self, local_path: pathlib.Path, remote_path: str):
+    def upload(self, local_path: pathlib.Path, remote: str):
         """
         Upload a file to the reMarkable.
         """
-        self._run_rmapi("put", str(local_path), remote_path)
+        self._run_rmapi("put", str(local_path), remote)
 
     def delete(self, remote_path: str):
         """
@@ -142,7 +166,6 @@ class RemarksWrapper:
                 stdout=subprocess.PIPE,
                 stderr=subprocess.PIPE,
                 check=True,
-                # shell=True
             )
         except subprocess.CalledProcessError as e:
             raise Exception(e.stderr.decode("utf-8")) from e
@@ -164,7 +187,7 @@ class RemarksWrapper:
         """
         input_path = pathlib.Path(input_path)
         output_path = pathlib.Path(output_path)
-        # Create outputpath.parent if it doesn't exist
+        # Create output path parent if it doesn't exist
         output_path.parent.mkdir(parents=True, exist_ok=True)
         output_path_without_extension = output_path.with_suffix("")
         # If input path is a .zip, extract it
@@ -180,8 +203,3 @@ class RemarksWrapper:
         list(output_path_without_extension.glob("*.pdf"))[0].rename(
             str(output_path.parent / output_path.name)
         )
-        # # Delete the temp file
-        # (output_path.parent / output_path.name).rmdir()
-        # list(output_path.parent.glob("*.this-is-a-tempfile"))[0].rename(
-        #     str(output_path)
-        # )

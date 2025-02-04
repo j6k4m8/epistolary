@@ -34,6 +34,18 @@ class MailboxManager(Protocol):
         """
         ...
 
+    def get_email_address_and_subject(self, uid: EmailID) -> tuple[str, str]:
+        """Get the email address and subject of an email.
+
+        Arguments:
+            uid: The ID of the email to get.
+
+        Returns:
+            The email address and subject of the email.
+
+        """
+        ...
+
     def get_email_subject_and_text(self, uid: EmailID) -> tuple[str, str]:
         """Get the subject and text of an email.
 

@@ -165,10 +165,10 @@ class EpistolaryOrchestrator:
         sent_emails = []
         for did, doc in outbox.items():
             outgoing_text = self.get_last_page_ocr_text_for_document(doc)
-            relevant_received_email = self.mailbox_manager.get_email(did)
+            addr, subj = self.mailbox_manager.get_email_address_and_subject(did)
             result = self.mailbox_manager.send_message(
-                to=relevant_received_email.from_,
-                subject="Re: " + relevant_received_email.subject,
+                to=addr,
+                subject=subj,
                 body=outgoing_text,
                 in_reply_to=did,
             )

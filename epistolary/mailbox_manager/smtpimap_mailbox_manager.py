@@ -1,4 +1,6 @@
 import pathlib
+from urllib.parse import quote
+from urllib.parse import unquote
 from redbox import EmailBox
 from redbox.models import EmailMessage
 from redmail.email.sender import EmailSender
@@ -9,9 +11,11 @@ from .mailbox_manager import MailboxManager
 
 
 def sanitize_fname(fname: str) -> str:
-    from urllib.parse import quote
-
     return quote(fname, safe="-_.@")
+
+
+def desanitize_fname(fname: str) -> str:
+    return unquote(fname)
 
 
 def _get_mail_filename(header_dict: dict[str, str]) -> EmailID:
@@ -124,6 +128,27 @@ class SMTPIMAPMailboxManager(MailboxManager):
         # every time we want to get a single email.
         return self.get_emails()[email_id]
 
+    def get_email_address_and_subject(
+        self, uid: EmailID, append_re: bool = True
+    ) -> tuple[str, str]:
+        """
+        Get the email address and subject of the email with the specified ID.
+
+        Arguments:
+            uid (EmailID): The email ID.
+
+        Returns:
+            tuple[str, str]: The email address and subject of the email.
+        """
+        try:
+            email = self.get_email(uid)
+            return email.from_, ("Re: " + email.subject) if append_re else email.subject
+        except KeyError:
+            # Luckily the email ID is literally the address and subject through
+            # our sanitization function.
+            dest, subject = uid.split(":::")
+            return desanitize_fname(dest).strip(), subject.strip()
+
     def get_email_subject_and_text(self, uid: EmailID) -> tuple[str, str]:
         """
         Get the subject and text of the email with the specified ID.
@@ -141,10 +166,10 @@ class SMTPIMAPMailboxManager(MailboxManager):
         self, to: str, subject: str, body: str, in_reply_to: EmailID | None = None
     ) -> bool:
         """Send a message."""
-        print(f"Sending email to {to} with subject {subject} and body:\n{body}")
-        conf = input("Is this correct? (y/n) ")
-        if conf.lower() != "y":
-            return False
+        # print(f"Sending email to {to} with subject {subject} and body:\n{body}")
+        # conf = input("Is this correct? (y/n) ")
+        # if conf.lower() != "y":
+        #     return False
         self._sender.send(
             subject=subject,
             receivers=[to],

@@ -6,10 +6,18 @@ import importlib
 
 
 def _get_module_from_string(module_str):
-    # The string should be in the format of 'module.submodule:class'
-    module_str, class_str = module_str.split(":")
-    module = importlib.import_module(module_str)
-    return getattr(module, class_str)
+    try:
+        if not isinstance(module_str, str):
+            raise ValueError(f"Expected string, got {type(module_str)}")
+        
+        if ':' not in module_str:
+            raise ValueError(f"Invalid module string: {module_str}. Expected format 'module.submodule:class'")
+            
+        module_path, class_name = module_str.rsplit(":", 1)
+        module = importlib.import_module(module_path)
+        return getattr(module, class_name)
+    except Exception as e:
+        raise type(e)(f"Failed to load module '{module_str}': {str(e)}")
 
 
 # Schema:
@@ -33,9 +41,11 @@ _CONFIG_SCHEMA = {
 }
 
 _MAILBOX_MANAGER_OPTIONS = {
-    "default": "epistolary.mailbox_manager.smtpimap_mailbox_manager:SMTPIMAPMailboxManager",
+    "smtpimap": "epistolary.mailbox_manager.smtpimap_mailbox_manager:SMTPIMAPMailboxManager",
+    "gmail": "epistolary.mailbox_manager.gmail_mailbox_manager:GmailMailboxManager",
 }
-_DEFAULT_MAILBOX_MANAGER = "default"
+_DEFAULT_MAILBOX_MANAGER = "smtpimap"
+
 
 
 _TEXT_EXTRACTOR_OPTIONS = {
@@ -56,17 +66,20 @@ class EpistolaryConfig:
 
     def __init__(
         self,
-        imap_host: str,
-        imap_port: int,
-        email: str,
-        password: str,
-        smtp_host: str,
-        smtp_port: int,
+        imap_host: Optional[str] = None,
+        imap_port: Optional[int] = None,
+        email: Optional[str] = None,
+        password: Optional[str] = None,
+        smtp_host: Optional[str] = None,
+        smtp_port: Optional[int] = None,
         smtp_username: Optional[str] = None,
         smtp_password: Optional[str] = None,
         ignore_marketing_emails: Optional[bool] = True,
         document_manager: str = _DEFAULT_DOCUMENT_MANAGER,
         text_extractor: str = _DEFAULT_TEXT_EXTRACTOR,
+        mailbox_manager: str = _DEFAULT_MAILBOX_MANAGER,
+        token_path: str = "~/.config/epistolary_gmail_token.json",
+        credentials_path: str = "~/.config/epistolary_gmail_credentials.json",
     ):
         """Create a new EpistolaryConfig object.
 
@@ -87,7 +100,10 @@ class EpistolaryConfig:
                 Defaults to _DEFAULT_DOCUMENT_MANAGER.
             text_extractor (str, optional): The text extractor to use.
                 Defaults to _DEFAULT_TEXT_EXTRACTOR.
-
+            mailbox_manager (str, optional): The mailbox manager to use.
+                Defaults to _DEFAULT_MAILBOX_MANAGER.
+            token_path (str, optional): Path to Gmail OAuth token file.
+            credentials_path (str, optional): Path to Gmail OAuth credentials file.
         """
         self.imap_host = imap_host
         self.imap_port = imap_port
@@ -100,11 +116,16 @@ class EpistolaryConfig:
         self.ignore_marketing_emails = ignore_marketing_emails
         self.document_manager = document_manager
         self.text_extractor = text_extractor
+        self.mailbox_manager = mailbox_manager
+        self.token_path = token_path
+        self.credentials_path = credentials_path
 
     @property
-    def password(self) -> str:
+    def password(self) -> Optional[str]:
         """Get the decoded password."""
-        return base64.b64decode(self._password.encode("utf-8")).decode("utf-8")
+        if self._password:
+            return base64.b64decode(self._password.encode("utf-8")).decode("utf-8")
+        return None
 
     @classmethod
     def from_dict(cls, config: dict) -> "EpistolaryConfig":
@@ -118,17 +139,20 @@ class EpistolaryConfig:
 
         """
         return cls(
-            imap_host=config["imap"]["host"],
-            imap_port=config["imap"]["port"],
-            email=config["email"],
-            password=config["password"],
-            smtp_host=config["smtp"]["host"],
-            smtp_port=config["smtp"]["port"],
+            imap_host=config.get("imap", {}).get("host"),
+            imap_port=config.get("imap", {}).get("port"),
+            email=config.get("email"),
+            password=config.get("password"),
+            smtp_host=config.get("smtp", {}).get("host"),
+            smtp_port=config.get("smtp", {}).get("port"),
             smtp_username=config.get("smtp_username"),
             smtp_password=config.get("smtp_password"),
             ignore_marketing_emails=config.get("ignore_marketing_emails", True),
             document_manager=config.get("document_manager", _DEFAULT_DOCUMENT_MANAGER),
             text_extractor=config.get("text_extractor", _DEFAULT_TEXT_EXTRACTOR),
+            mailbox_manager=config.get("mailbox_manager", _DEFAULT_MAILBOX_MANAGER),
+            token_path=config.get("token_path", "~/.config/epistolary_gmail_token.json"),
+            credentials_path=config.get("credentials_path", "~/.config/epistolary_gmail_credentials.json"),
         )
 
     @classmethod
@@ -173,6 +197,9 @@ class EpistolaryConfig:
             "ignore_marketing_emails": self.ignore_marketing_emails,
             "document_manager": self.document_manager,
             "text_extractor": self.text_extractor,
+            "mailbox_manager": self.mailbox_manager,
+            "token_path": self.token_path,
+            "credentials_path": self.credentials_path,
         }
 
     def to_file(self, path: str | pathlib.Path = "~/.config/epistolary.json") -> None:

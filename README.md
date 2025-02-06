@@ -3,6 +3,8 @@
 <p align=center><img alt="PyPI - Version" src="https://img.shields.io/pypi/v/epistolary?style=for-the-badge">&nbsp; <img alt="Static Badge" src="https://img.shields.io/badge/%F0%9F%92%8C-Epistolary-beige?style=for-the-badge&label=Written%20by%20Hand">
 </p>
 
+![Epistolary user flow](docs/epistolary-user-flow@8x.png)
+
 I find writing emails to be one of the most tedious and unpleasant tasks of my day. But I find the act of handwriting to be one of the most pleasant! The reMarkable is an e-ink tablet with a very pleasant writing experience. This software allows you to respond to emails by writing on the reMarkable, and then sends an OCR'd version of your writing to the recipient.
 
 ---
@@ -14,7 +16,9 @@ See [docs/Overview.md](docs/Overview.md) to see an example in action!
 This tool is designed to "print" emails to a PDF file (one thread per file), with a blank (ruled) page after each email.
 You can write a reply to the email on the blank page, and Epistolary will convert your handwriting to text and send it as a reply to the email.
 
-It is originally designed to be used with the [Remarkable](https://remarkable.com/) tablet, which is a great device for reading and annotating PDFs, but it should work with standalone PDFs, tablet devices, or scanned documents as well.
+You can also write a new email by creating a file called `recipient@example.com:::My cool subject`, writing a letter, and then moving it to the `Outbox` folder.
+
+It is designed to be used with the [ReMarkable](https://remarkable.com/) tablet, which is a great device for reading and annotating PDFs, but it should work with standalone PDFs, tablet devices, or scanned documents as well.
 
 ## Architecture
 

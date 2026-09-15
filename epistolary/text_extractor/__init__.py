@@ -1,4 +1,5 @@
-from .text_extractor import TextExtractor
+from .openai_text_extractor import OpenAITextExtractor
 from .tesseract_text_extractor import TesseractTextExtractor
+from .text_extractor import TextExtractor
 
-__all__ = ["TextExtractor", "TesseractTextExtractor"]
+__all__ = ["OpenAITextExtractor", "TesseractTextExtractor", "TextExtractor"]

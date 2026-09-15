@@ -1,19 +1,9 @@
 from typing import Protocol
 
-from fitz import Page
+import fitz
 
 
 class TextExtractor(Protocol):
-    """A protocol for classes that extract text from documents."""
-
-    def extract_text_from_page(self, page: Page) -> str:
-        """Extract text from a page.
-
-        Arguments:
-            page: The page to extract text from.
-
-        Returns:
-            The extracted text.
-
-        """
+    def extract(self, page: fitz.Page) -> str:
+        """The handwriting on a page as text, or an empty string if there is none."""
         ...

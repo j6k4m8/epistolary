@@ -1,2 +1,0 @@
-EmailID = str
-DocumentID = str

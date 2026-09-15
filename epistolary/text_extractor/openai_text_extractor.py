@@ -1,52 +1,36 @@
 import base64
-from fitz import Page
+
+import fitz
 from openai import OpenAI
 
-from .text_extractor import TextExtractor
+PROMPT = (
+    "Transcribe the handwriting in this image. Reply with the transcribed text only, "
+    "keeping the writer's line breaks and paragraphs. If there is no writing, reply with nothing."
+)
 
 
-class OpenAITextExtractor(TextExtractor):
-    def __init__(
-        self,
-        client: OpenAI | None = None,
-        api_key: str | None = None,
-        page_shrink_factor: int = 2,
-    ):
-        self._client = client or (OpenAI(api_key=api_key) if api_key else OpenAI())
-        self._shrink_factor = page_shrink_factor
+class OpenAITextExtractor:
+    """Sends a rendering of the page to an OpenAI vision model."""
 
-    def extract_text_from_page(self, page: Page) -> str:
-        png = page.get_pixmap()
-        png.shrink(self._shrink_factor)
-        png_bytes = png.tobytes("png")
-        png_b64 = base64.b64encode(png_bytes).decode("utf-8")
+    def __init__(self, client: OpenAI | None = None, api_key: str | None = None, model: str = "gpt-4o", dpi: int = 150):
+        self.client = client
+        self.api_key = api_key
+        self.model = model
+        self.dpi = dpi
 
-        res = self._client.chat.completions.create(
-            model="gpt-4o-mini",
+    def extract(self, page: fitz.Page) -> str:
+        self.client = self.client or OpenAI(api_key=self.api_key)  # here, so that `receive` needs no key
+        png = base64.b64encode(page.get_pixmap(dpi=self.dpi).tobytes("png")).decode()
+        response = self.client.chat.completions.create(
+            model=self.model,
             messages=[
-                {
-                    "role": "system",
-                    "content": "You are a powerful handwriting parser robot. You respond ONLY with the transcribed text, NEVER with any other information, questions, or discussion.",
-                },
                 {
                     "role": "user",
                     "content": [
-                        {
-                            "type": "text",
-                            "text": "What is the (formatted) text content of this hand-written message?",
-                        },
-                        {
-                            "type": "image_url",
-                            "image_url": {
-                                "url": f"data:image/jpeg;base64,{png_b64}",
-                            },
-                        },
+                        {"type": "text", "text": PROMPT},
+                        {"type": "image_url", "image_url": {"url": f"data:image/png;base64,{png}"}},
                     ],
-                },
+                }
             ],
         )
-        if len(res.choices) and res.choices[0].message.role == "assistant":
-            return (
-                res.choices[0].message.content if res.choices[0].message.content else ""
-            )
-        raise ValueError("No response from OpenAI")
+        return (response.choices[0].message.content or "").strip()

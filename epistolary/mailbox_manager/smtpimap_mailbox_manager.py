@@ -1,41 +1,17 @@
-import pathlib
-from urllib.parse import quote
-from urllib.parse import unquote
-from redbox import EmailBox
-from redbox.models import EmailMessage
-from redmail.email.sender import EmailSender
+"""IMAP and SMTP over the standard library."""
 
-from ..epiconfig import EpistolaryConfig
-from ..types import EmailID
-from .mailbox_manager import MailboxManager
+import imaplib
+import smtplib
+from contextlib import contextmanager, suppress
+from email.message import EmailMessage
+from email.utils import formatdate, make_msgid
 
+from .mailbox_manager import Email
 
-def sanitize_fname(fname: str) -> str:
-    return quote(fname, safe="-_.@")
+TIMEOUT = 30  # seconds, per connection
 
 
-def desanitize_fname(fname: str) -> str:
-    return unquote(fname)
-
-
-def _get_mail_filename(header_dict: dict[str, str]) -> EmailID:
-    sender = sanitize_fname(header_dict.get("From", "unknown"))
-    subject = header_dict.get("Subject", "no subject")
-    combined = f"{sender}:::{subject}"
-    return EmailID(combined)
-
-
-class SMTPIMAPMailboxManager(MailboxManager):
-    """
-    A class representing a mailbox manager for SMTP and IMAP protocols.
-
-    Args:
-        host (str): The hostname of the mail server.
-        port (int): The port number of the mail server.
-        username (str): The username for authentication.
-        password (str): The password for authentication.
-    """
-
+class SMTPIMAPMailboxManager:
     def __init__(
         self,
         imap_host: str,
@@ -43,138 +19,82 @@ class SMTPIMAPMailboxManager(MailboxManager):
         username: str,
         password: str,
         smtp_host: str,
-        smtp_port: int = 465,
+        smtp_port: int = 587,
         smtp_username: str | None = None,
         smtp_password: str | None = None,
     ):
-        """Create a new SMTPIMAPMailboxManager object.
+        self.imap = (imap_host, imap_port, username, password)
+        self.smtp = (smtp_host, smtp_port, smtp_username or username, smtp_password or password)
+        self.address = username
 
-        Arguments:
-            host (str): The hostname of the mail server.
-            port (int): The port number of the mail server.
-            username (str): The username for authentication.
-            password (str): The password for authentication.
-
-        """
-        if smtp_username is None:
-            smtp_username = username
-        if smtp_password is None:
-            smtp_password = password
-        self._box = EmailBox(imap_host, imap_port, username, password)
-        self._sender = EmailSender(smtp_host, smtp_port, smtp_username, smtp_password)
-
-    @classmethod
-    def from_file(
-        cls, path: str | pathlib.Path = "~/.config/epistolary.json"
-    ) -> "SMTPIMAPMailboxManager":
-        """Create a new SMTPIMAPMailboxManager from a file.
-
-        Arguments:
-            path (str | pathlib.Path, optional): The path to the file.
-                Defaults to "~/.config/epistolary.json".
-
-        Returns:
-            SMTPIMAPMailboxManager: The mailbox manager.
-
-        """
-        config = EpistolaryConfig.from_file(path)
-        return cls(
-            imap_host=config.imap_host,
-            imap_port=config.imap_port,
-            username=config.email,
-            password=config.password,
-            smtp_host=config.smtp_host,
-            smtp_port=config.smtp_port,
-            smtp_username=config.smtp_username,
-            smtp_password=config.smtp_password,
-        )
-
-    def get_emails(
-        self, folder: str | None = None, limit: int | None = None
-    ) -> dict[EmailID, EmailMessage]:
-        """
-        Get the emails from the specified folder.
-
-        Arguments:
-            folder (str | None, optional): The folder name. Defaults to "INBOX".
-            limit (int | None, optional): The maximum number of emails to return.
-                Defaults to None, which returns all emails.
-
-        Returns:
-            dict[EmailID, EmailMessage]: A dictionary containing the emails,
-                where keys are the email IDs and the values are the messages.
-        """
-        if folder is None:
-            folder = "INBOX"
-        messages = self._box[folder].search(unseen=True)
-        result = {}
-        for message in messages:
-            result[_get_mail_filename(message.headers)] = message
-            if limit is not None and len(result) >= limit:
-                break
-        return result
-
-    def get_email(self, email_id: EmailID) -> EmailMessage:
-        """
-        Get the email with the specified ID.
-
-        Arguments:
-            email_id (EmailID): The email ID.
-
-        Returns:
-            EmailMessage: The email message.
-        """
-        # TODO: Sad puppy. This means we're fetching ALL emails from the server
-        # every time we want to get a single email.
-        return self.get_emails()[email_id]
-
-    def get_email_address_and_subject(
-        self, uid: EmailID, append_re: bool = True
-    ) -> tuple[str, str]:
-        """
-        Get the email address and subject of the email with the specified ID.
-
-        Arguments:
-            uid (EmailID): The email ID.
-
-        Returns:
-            tuple[str, str]: The email address and subject of the email.
-        """
+    @contextmanager
+    def _imap(self):
+        host, port, user, password = self.imap
+        conn = imaplib.IMAP4_SSL(host, port, timeout=TIMEOUT)
         try:
-            email = self.get_email(uid)
-            return email.from_, ("Re: " + email.subject) if append_re else email.subject
-        except KeyError:
-            # Luckily the email ID is literally the address and subject through
-            # our sanitization function.
-            dest, subject = uid.split(":::")
-            return desanitize_fname(dest).strip(), subject.strip()
+            conn.login(user, password)
+            yield conn
+        finally:
+            with suppress(Exception):
+                conn.logout()
 
-    def get_email_subject_and_text(self, uid: EmailID) -> tuple[str, str]:
-        """
-        Get the subject and text of the email with the specified ID.
+    @contextmanager
+    def _smtp(self):
+        host, port, user, password = self.smtp
+        if port == 465:
+            conn = smtplib.SMTP_SSL(host, port, timeout=TIMEOUT)
+        else:
+            conn = smtplib.SMTP(host, port, timeout=TIMEOUT)
+        try:
+            if port != 465:
+                conn.starttls()
+            conn.login(user, password)
+            yield conn
+        finally:
+            with suppress(Exception):
+                conn.quit()
 
-        Arguments:
-            uid (EmailID): The email ID.
+    def check(self) -> None:
+        with self._imap(), self._smtp():
+            pass
 
-        Returns:
-            tuple[str, str]: The subject and text of the email.
-        """
-        email = self.get_email(uid)
-        return email.subject, email.html_body
+    def unseen_uids(self, folder: str) -> list[int]:
+        with self._imap() as conn:
+            _select(conn, folder, readonly=True)
+            _, data = conn.uid("SEARCH", "UNSEEN")
+        return sorted(int(uid) for uid in data[0].split())
 
-    def send_message(
-        self, to: str, subject: str, body: str, in_reply_to: EmailID | None = None
-    ) -> bool:
-        """Send a message."""
-        # print(f"Sending email to {to} with subject {subject} and body:\n{body}")
-        # conf = input("Is this correct? (y/n) ")
-        # if conf.lower() != "y":
-        #     return False
-        self._sender.send(
-            subject=subject,
-            receivers=[to],
-            text=body,
-            html=body,
-            headers={"In-Reply-To": in_reply_to} if in_reply_to is not None else None,
-        )
-        return True
+    def fetch(self, folder: str, uids: list[int]) -> list[Email]:
+        emails = []
+        with self._imap() as conn:
+            _select(conn, folder, readonly=True)
+            for uid in uids:
+                _, data = conn.uid("FETCH", str(uid), "(BODY.PEEK[])")
+                raw = next((part[1] for part in data if isinstance(part, tuple)), None)
+                if raw:  # None if the message vanished between search and fetch
+                    emails.append(Email.from_bytes(uid, raw))
+        return emails
+
+    def mark_answered(self, folder: str, uid: int) -> None:
+        with self._imap() as conn:
+            _select(conn, folder)
+            conn.uid("STORE", str(uid), "+FLAGS", r"(\Answered)")
+
+    def send(self, to: str, subject: str, body: str, in_reply_to: str | None = None) -> None:
+        msg = EmailMessage()
+        msg["From"] = self.address
+        msg["To"] = to
+        msg["Subject"] = subject
+        msg["Date"] = formatdate(localtime=True)
+        msg["Message-ID"] = make_msgid(domain=self.address.rpartition("@")[2] or None)
+        if in_reply_to:
+            msg["In-Reply-To"] = msg["References"] = in_reply_to
+        msg.set_content(body)
+        with self._smtp() as conn:
+            conn.send_message(msg)
+
+
+def _select(conn: imaplib.IMAP4, folder: str, readonly: bool = False) -> None:
+    status, detail = conn.select(folder, readonly=readonly)
+    if status != "OK":
+        raise RuntimeError(f"cannot open folder {folder!r}: {detail[0].decode()}")

@@ -1,25 +1,15 @@
-import pytesseract
 import fitz
+import pytesseract
 from PIL import Image
 
-from .text_extractor import TextExtractor
 
+class TesseractTextExtractor:
+    """Local OCR. Needs the tesseract binary on PATH."""
 
-class TesseractTextExtractor(TextExtractor):
-    """A class that extracts text from documents using Tesseract."""
+    def __init__(self, dpi: int = 300):
+        self.dpi = dpi
 
-    def extract_text_from_page(self, page: fitz.Page) -> str:
-        """Extract text from a page.
-
-        Arguments:
-            page: The page to extract text from.
-
-        Returns:
-            The extracted text.
-
-        """
-        # Convert the PDF page to be readable as an image, using the
-        # fitz library.
-        pix = page.get_pixmap()  # type: ignore
-        img = Image.frombytes("RGB", (pix.width, pix.height), pix.samples)
-        return pytesseract.image_to_string(img)
+    def extract(self, page: fitz.Page) -> str:
+        pix = page.get_pixmap(dpi=self.dpi)
+        image = Image.frombytes("RGB", (pix.width, pix.height), pix.samples)
+        return pytesseract.image_to_string(image).strip()

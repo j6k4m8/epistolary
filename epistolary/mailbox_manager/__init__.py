@@ -1,4 +1,4 @@
-from .mailbox_manager import MailboxManager
+from .mailbox_manager import Email, MailboxManager
 from .smtpimap_mailbox_manager import SMTPIMAPMailboxManager
 
-__all__ = ["MailboxManager", "SMTPIMAPMailboxManager"]
+__all__ = ["Email", "MailboxManager", "SMTPIMAPMailboxManager"]

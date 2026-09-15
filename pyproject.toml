@@ -1,32 +1,38 @@
 [project]
 name = "epistolary"
-version = "0.2.0"
-description = "Add your description here"
+version = "0.3.0"
+description = "Answer email by hand on a reMarkable tablet"
 readme = "README.md"
-requires-python = ">=3.11"
+requires-python = ">=3.12"
 dependencies = [
-    "redbox>=0.2.1",
-    "redmail>=0.6.0",
-    "pytesseract>=0.3.13",
-    "pillow>=10.4.0",
-    "remarks",
-    "boto3>=1.35.8",
-    "openai>=1.43.0",
     "click>=8.1.7",
+    "openai>=1.43.0",
+    "pillow>=10.4.0",
+    "pymupdf>=1.24",
+    "pytesseract>=0.3.13",
 ]
+
+[project.scripts]
+epistolary = "epistolary.cli:cli"
+
+# remarks is only on GitHub, and PyPI rejects packages that depend on a git URL,
+# so it lives in a dependency group: `uv sync` installs it, `pip install epistolary` does not.
+[dependency-groups]
+dev = ["ipykernel>=6.29.5", "pytest>=8", "ruff>=0.6.3"]
+remarkable = ["remarks"]
+
+[tool.uv]
+default-groups = ["dev", "remarkable"]
+
+[tool.uv.sources]
+remarks = { git = "https://github.com/azeirah/remarks", branch = "main" }
 
 [build-system]
 requires = ["hatchling"]
 build-backend = "hatchling.build"
 
-[tool.uv]
-dev-dependencies = [
-    "ipykernel>=6.29.5",
-    "ruff>=0.6.3",
-]
+[tool.ruff]
+line-length = 120
 
-[tool.uv.sources]
-remarks = { git = "https://github.com/azeirah/remarks", branch = "v6_with_rmscene" }
-
-[project.scripts]
-epistolary = "epistolary.cli:cli"
+[tool.pytest.ini_options]
+testpaths = ["tests"]

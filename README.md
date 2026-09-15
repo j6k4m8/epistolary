@@ -13,135 +13,141 @@ See [docs/Overview.md](docs/Overview.md) to see an example in action!
 
 ---
 
-This tool is designed to "print" emails to a PDF file (one thread per file), with a blank (ruled) page after each email.
-You can write a reply to the email on the blank page, and Epistolary will convert your handwriting to text and send it as a reply to the email.
+`epistolary receive` turns each unread email into a PDF (one message per file, named `Subject - Sender`) with a ruled page at the end, and puts it in an `Emails` folder on your device. Write your reply on the ruled page (add more pages if you need them), then move the file to `Emails/Outbox`. `epistolary send` transcribes the handwriting, shows you the result, and sends it as a reply. Sent files move to `Emails/_Archive`.
 
-You can also write a new email by creating a file called `recipient@example.com:::My cool subject`, writing a letter, and then moving it to the `Outbox` folder.
+To write a new email rather than a reply, create a notebook named `recipient@example.com:::My subject`, write it, and move it to the `Outbox`.
 
-It is designed to be used with the [ReMarkable](https://remarkable.com/) tablet, which is a great device for reading and annotating PDFs, but it should work with standalone PDFs, tablet devices, or scanned documents as well.
+Epistolary never marks your mail as read, and it only archives what it has sent. It remembers what it has uploaded in a state file next to the config (`epistolary.state.json`), and it flags emails you have replied to as answered.
 
 ## Architecture
 
-The tool comprises three main components:
+Three small interfaces, each with pluggable backends:
 
--   `MailboxManager`: A class that manages the mailbox, and provides methods to get the next email to be printed, and to send a reply to an email.
--   `DocumentManager`: A class that manages the PDF document library.
--   `EpistolaryOrchestrator`: A class that manages the interaction between the `MailboxManager` and the `DocumentManager`, and provides OCR and main entry point functionality.
+-   `MailboxManager`: lists unread mail, downloads it, and sends replies. Backend: IMAP and SMTP.
+-   `DocumentManager`: an inbox, an outbox, and an archive of PDFs. Backends: a reMarkable tablet (through `rmapi` and `remarks`), or a directory on disk.
+-   `TextExtractor`: handwriting to text. Backends: OpenAI vision models, or Tesseract.
+
+`EpistolaryOrchestrator` runs the receive and send flows on top of them.
 
 ## Installation
 
 ### 0. Requirements
 
-If you are using the tesseract OCR option, you must first install Tesseract for OCR. On MacOS, this can be done with `brew install tesseract`.
+-   For the reMarkable: [`rmapi`](https://github.com/ddvk/rmapi) on your `PATH`, logged in to your account. The `remarks` renderer is installed by `uv sync` (see below) and needs `cairo`: `brew install pkg-config cairo` on macOS.
+-   For OpenAI transcription: an API key in `OPENAI_API_KEY`.
+-   For Tesseract transcription: the `tesseract` binary, for example `brew install tesseract`.
 
-If you are using the OpenAI OCR option, you should configure your OpenAI API key globally, or you can pass it in a config to the TextExtractor directly.
+### 1. Install
 
-If you are planning to use the reMarkable document management tools, you will also need to install [the `rmapi` tool](https://github.com/juruen/rmapi) and configure it with your reMarkable account.
-
-### 1. Install the package
-
-Optionally, install Python dependencies:
+From a checkout:
 
 ```bash
-uv install
+uv sync
 ```
 
-(If you do not do this explicitly, the package will install the dependencies automatically when you run the package.)
+From PyPI, `pip install epistolary` gets everything except `remarks`, which only lives on GitHub. Add it for reMarkable support:
 
-### 2. Configure the package
+```bash
+pip install git+https://github.com/azeirah/remarks
+```
 
-This can be done in one of two ways: Manually, editing a config file; or by running the `init` wizard.
+### 2. Configure
 
-We STRONGLY recommend using the `init` wizard, as it will guide you through the process of setting up the config file.
-
-#### Option 1: Run the `init` wizard
+The wizard asks for each setting and checks the login:
 
 ```bash
 uv run epistolary init
 ```
 
-This will guide you through the process of setting up the config file, passing in email credentials and the configurations for the document managers you'd like to use. You can also specify the location of a config file by passing the `--config`/`-c` flag:
-
-```bash
-uv run epistolary --config ~/.config/epistolary.json init
-```
-
-#### Option 2: Manually edit the config file
-
-Create a `~/.config/epistolary.json` file. Here's an example of what it might look like:
+Or write `~/.config/epistolary.json` yourself. Passwords are stored base64-encoded (`python -c 'import base64;print(base64.b64encode(b"hunter2").decode())'`), which hides them from a glance and nothing more. Keep the file private; `init` writes it `0600`.
 
 ```jsonc
 {
-    "email": "####",
-    "password": "####",
-    "imap": {
-        "host": "####",
-        "port": 993
-    },
-    "smtp": {
-        "host": "####",
-        "port": 587
-    },
+    "email": "you@example.com",
+    "password": "aHVudGVyMg==",
+    "imap": { "host": "imap.example.com", "port": 993 },
+    "smtp": { "host": "smtp.example.com", "port": 587 },
 
-    // Optional (defaults shown)
-
+    // Optional, defaults shown
     "smtp_username": null,
-    "smtp_password": null,
-
-    "ignore_marketing_emails": true,
-    "document_manager": "epistolary.document_manager.remarkable_document_manager:RemarkableDocumentManager",
-    "text_extractor": "epistolary.text_extractor.openai_text_extractor:OpenAITextExtractor"
+    "smtp_password": null,             // base64, like "password"
+    "ignore_marketing_emails": true,   // skip mailing lists and marketing (a List-Unsubscribe header)
+    "folder": "INBOX",
+    "limit": 10,                       // emails per `receive`, newest first
+    "document_manager": "remarkable",  // or "files", or "module:Class"
+    "document_manager_kwargs": {},     // e.g. {"root": "Emails"} or {"root": "~/Epistolary"}
+    "text_extractor": "openai",        // or "tesseract", or "module:Class"
+    "text_extractor_kwargs": {}        // e.g. {"model": "gpt-4o", "dpi": 150}
 }
 ```
 
+Pass `--config PATH` to any command to use a different file.
+
 ## Usage
 
-We recommend doing this with the `epistolary` cli:
-
 ```bash
-# Get new emails and "print" them to your device:
-uv run epistolary receive
+uv run epistolary receive           # unread emails onto the device
+uv run epistolary receive --prune   # also archive documents whose email you have since read elsewhere
+uv run epistolary send              # show each transcription and ask before sending
+uv run epistolary send --dry-run    # show and send nothing
+uv run epistolary send --yes        # send without asking, for cron
 ```
 
-```bash
-# Send the replies you've written:
-uv run epistolary send
-```
+Add `--debug` before the command for verbose logging.
 
-Alternatively, here's an example of a Python script that does the same thing as the above commands:
+The same from Python:
 
 ```python
-from epistolary.orchestrator import EpistolaryOrchestrator
+from epistolary.config import EpistolaryConfig
+
+epistolary = EpistolaryConfig.from_file().orchestrator("~/.config/epistolary.state.json")  # any path you like
+epistolary.receive()
+epistolary.send(confirm=lambda to, subject, body: print(to, subject, body) or True)
+```
+
+or assemble the pieces yourself:
+
+```python
+from epistolary.document_manager import RemarkableDocumentManager
 from epistolary.mailbox_manager import SMTPIMAPMailboxManager
-from epistolary.document_manager.remarkable_document_manager import RemarkableDocumentManager
-from epistolary.text_extractor.openai_text_extractor import OpenAITextExtractor
+from epistolary.orchestrator import EpistolaryOrchestrator
+from epistolary.text_extractor import OpenAITextExtractor
 
-EO = EpistolaryOrchestrator(
-    SMTPIMAPMailboxManager.from_file(),
-    RemarkableDocumentManager(),
-    text_extractor=OpenAITextExtractor(),
-    debug=True,
+epistolary = EpistolaryOrchestrator(
+    SMTPIMAPMailboxManager("imap.example.com", 993, "you@example.com", "hunter2", "smtp.example.com", 587),
+    RemarkableDocumentManager(root="Emails"),
+    OpenAITextExtractor(),
+    state_path="~/.config/epistolary.state.json",
 )
-
 ```
 
-To receive emails:
+## Upgrading from 0.2
 
-```python
-EO.refresh_document_mailbox()
-```
-
-And to send:
-
-```python
-EO.send_outbox()
-```
-
-Note that the `SMTPIMAPMailboxManager` uses the `epistolary.json` file to get the email and password, and the `RemarkableDocumentManager` uses the `rmapi` tool to manage the reMarkable documents (which depends upon a `~/.rmapi` file with your reMarkable credentials).
-
-If you do not choose to use the `#from_file()` method, you can pass in the email, password, and other parameters directly to the `SMTPIMAPMailboxManager` constructor.
+Send or archive whatever is in your `Outbox` first; then `receive` will fill `Emails/` under the new names beside anything already there. Old-style `Outbox` documents still send, as new messages rather than threaded replies. If you set `smtp_password` by hand, base64-encode it like `password`.
 
 ## Known Limitations
 
--   No support for inline images or attachments yet... But it should be easy to add!
--   Spacing and formatting of the OCR'd text is not perfect, but it's usually good enough for a quick reply.
+-   No support for inline images or attachments yet.
+-   Replies go to the sender (or `Reply-To`) only, never to `Cc`.
+-   Transcription is good, not perfect. `send` shows you the text first for a reason.
+
+## Troubleshooting
+
+### Cairo / pkg-config
+
+On macOS, `remarks` needs `cairo` and `pkg-config`:
+
+```bash
+brew install pkg-config cairo
+```
+
+If the Python packages were installed before cairo was, reinstall them:
+
+```bash
+rm -rf .venv
+uv sync
+```
+
+### `openai` transcription
+
+Set `OPENAI_API_KEY` in your environment, or pass `{"api_key": "..."}` in `text_extractor_kwargs`.
